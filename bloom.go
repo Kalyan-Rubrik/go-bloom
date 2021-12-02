@@ -18,7 +18,7 @@ type filter struct {
 
 func (f *filter) bits(data []byte) []uint32 {
 	f.h.Reset()
-	f.h.Write(data)
+	_, _ = f.h.Write(data)
 	d := f.h.Sum(nil)
 	a := binary.BigEndian.Uint32(d[4:8])
 	b := binary.BigEndian.Uint32(d[0:4])
@@ -47,18 +47,18 @@ func estimates(n uint32, p float64) (uint32, uint32) {
 	if words >= math.MaxInt32 {
 		panic(fmt.Sprintf("A 32-bit bloom filter with n %d and p %f requires a 32-bit bitset with a slice of %f words, but slices cannot contain more than %d elements. Please use the equivalent 64-bit bloom filter, e.g. New64(), instead.", n, p, words, math.MaxInt32-1))
 	} else if m > math.MaxUint32 {
-		panic(fmt.Sprintf("A 32-bit bloom filter with n %d and p %f requires a 32-bit bitset with %d bits, but this number overflows an uint32. Please use the equivalent 64-bit bloom filter, e.g. New64(), instead.", n, p, m))
+		panic(fmt.Sprintf("A 32-bit bloom filter with n %d and p %f requires a 32-bit bitset with %f bits, but this number overflows an uint32. Please use the equivalent 64-bit bloom filter, e.g. New64(), instead.", n, p, m))
 	}
 	return uint32(m), uint32(k)
 }
 
-// A standard bloom filter using the 64-bit FNV-1a hash function.
+// Filter A standard bloom filter using the 64-bit FNV-1a hash function.
 type Filter struct {
 	*filter
 	b *bitset.Bitset32
 }
 
-// Check whether data was previously added to the filter. Returns true if
+// Test Check whether data was previously added to the filter. Returns true if
 // yes, with a false positive chance near the ratio specified upon creation
 // of the filter. The result cannot be falsely negative.
 func (f *Filter) Test(data []byte) bool {
@@ -77,12 +77,12 @@ func (f *Filter) Add(data []byte) {
 	}
 }
 
-// Resets the filter.
+// Reset Resets the filter.
 func (f *Filter) Reset() {
 	f.b.Reset()
 }
 
-// Create a bloom filter with an expected n number of items, and an acceptable
+// New Create a bloom filter with an expected n number of items, and an acceptable
 // false positive rate of p, e.g. 0.01.
 func New(n int, p float64) *Filter {
 	m, k := estimates(uint32(n), p)
@@ -93,14 +93,14 @@ func New(n int, p float64) *Filter {
 	return f
 }
 
-// A counting bloom filter using the 64-bit FNV-1a hash function. Supports
+// CountingFilter A counting bloom filter using the 64-bit FNV-1a hash function. Supports
 // removing items from the filter.
 type CountingFilter struct {
 	*filter
 	b []*bitset.Bitset32
 }
 
-// Checks whether data was previously added to the filter. Returns true if
+// Test Checks whether data was previously added to the filter. Returns true if
 // yes, with a false positive chance near the ratio specified upon creation
 // of the filter. The result cannot cannot be falsely negative (unless one
 // has removed an item that wasn't actually added to the filter previously.)
@@ -114,7 +114,7 @@ func (f *CountingFilter) Test(data []byte) bool {
 	return true
 }
 
-// Adds data to the filter.
+// Add Adds data to the filter.
 func (f *CountingFilter) Add(data []byte) {
 	for _, v := range f.bits(data) {
 		done := false
@@ -133,7 +133,7 @@ func (f *CountingFilter) Add(data []byte) {
 	}
 }
 
-// Removes data from the filter. This exact data must have been previously added
+// Remove Removes data from the filter. This exact data must have been previously added
 // to the filter, or future results will be inconsistent.
 func (f *CountingFilter) Remove(data []byte) {
 	last := len(f.b) - 1
@@ -148,13 +148,13 @@ func (f *CountingFilter) Remove(data []byte) {
 	}
 }
 
-// Resets the filter.
+// Reset Resets the filter.
 func (f *CountingFilter) Reset() {
 	f.b = f.b[:1]
 	f.b[0].Reset()
 }
 
-// Create a counting bloom filter with an expected n number of items, and an
+// NewCounting Create a counting bloom filter with an expected n number of items, and an
 // acceptable false positive rate of p. Counting bloom filters support
 // the removal of items from the filter.
 func NewCounting(n int, p float64) *CountingFilter {
@@ -166,13 +166,13 @@ func NewCounting(n int, p float64) *CountingFilter {
 	return f
 }
 
-// A layered bloom filter using the 64-bit FNV-1a hash function.
+// LayeredFilter A layered bloom filter using the 64-bit FNV-1a hash function.
 type LayeredFilter struct {
 	*filter
 	b []*bitset.Bitset32
 }
 
-// Checks whether data was previously added to the filter. Returns the number of
+// Test Checks whether data was previously added to the filter. Returns the number of
 // the last layer where the data was added, e.g. 1 for the first layer, and a
 // boolean indicating whether the data was added to the filter at all. The check
 // has a false positive chance near the ratio specified upon creation of the
@@ -195,7 +195,7 @@ func (f *LayeredFilter) Test(data []byte) (int, bool) {
 	return 0, false
 }
 
-// Adds data to the filter. Returns the number of the layer where the data
+// Add Adds data to the filter. Returns the number of the layer where the data
 // was added, e.g. 1 for the first layer.
 func (f *LayeredFilter) Add(data []byte) int {
 	is := f.bits(data)
@@ -225,13 +225,13 @@ func (f *LayeredFilter) Add(data []byte) int {
 	return i + 2
 }
 
-// Resets the filter.
+// Reset Resets the filter.
 func (f *LayeredFilter) Reset() {
 	f.b = f.b[:1]
 	f.b[0].Reset()
 }
 
-// Create a layered bloom filter with an expected n number of items, and an
+// NewLayered Create a layered bloom filter with an expected n number of items, and an
 // acceptable false positive rate of p. Layered bloom filters can be used
 // to keep track of a certain, arbitrary count of items, e.g. to check if some
 // given data was added to the filter 10 times or less.
