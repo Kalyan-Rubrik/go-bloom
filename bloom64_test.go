@@ -161,3 +161,26 @@ func BenchmarkFilterAddExisting64(b *testing.B) {
 		f.Add(foo)
 	}
 }
+
+func BenchmarkCountingFilterAdd64(b *testing.B) {
+	b.StopTimer()
+	f := NewCounting64(int64(b.N), 0.01)
+	datas := make([][]byte, b.N)
+	for i := range datas {
+		datas[i] = []byte(strconv.Itoa(i))
+	}
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		f.Add(datas[i])
+	}
+}
+
+func BenchmarkCountingFilterAddExisting64(b *testing.B) {
+	b.StopTimer()
+	f := NewCounting64(int64(b.N), 0.01)
+	f.Add(foo)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		f.Add(foo)
+	}
+}
